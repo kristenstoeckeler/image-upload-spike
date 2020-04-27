@@ -28,7 +28,7 @@ class Home extends Component {
         if (this.state.selectedFile) {
             data.append('profileImage', this.state.selectedFile, this.state.selectedFile.name); 
             
-            axios.post('/api/profile/profile-img-upload', data, {
+            axios.post('/profile/profile-img-upload', data, {
                 headers: {
                     'accept': 'application/json',
                     'Accept-Language': 'en-US,en;q=0.8',
@@ -66,10 +66,10 @@ class Home extends Component {
     
 
     //POST to SAVE IMAGE DETAILS TO DB
-    sendDetailsToDB = (fileName) => {
-        console.log('in sendDetailsToDB function', fileName);
+    sendDetailsToDB = (imageObject) => {
+        console.log('in sendDetailsToDB function', imageObject);
 
-        axios.post('/api/profile/image', fileName)
+        axios.post('/profile/image', imageObject)
             .then((response) => {
                 console.log(response);
             }).catch((error) => {

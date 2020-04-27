@@ -4,18 +4,42 @@ const aws = require('aws-sdk');
 const multerS3 = require('multer-s3');
 const multer = require('multer');
 const path = require('path');
-const pool = require('../../modules/pool');
 const bodyParser = require('body-parser');
 
+// Get express to create a Router
+let router = express.Router();
+
+//Pool config
+const pg = require('pg');
+const Pool = pg.Pool;
+const pool = new Pool({
+    database: 'image-upload-spike', //change this to match database in Postico
+    host: 'localhost',          //where your DB is
+    port: 5432,
+    max: 10,                  //10 will service thousands of requests, this depends on demand on app
+    idleTimeoutMillis: 30000    //30 second timout on idle queries                
+})
+
+pool.on('connect', () => {         //this is an event handler
+    console.log('Database connection established...');
+})
+
+pool.on('error', (error) => {
+    console.log('Database error:', error);
+})
 
 
 /**
  * express.Router() creates modular, mountable route handlers
  * A Router instance is a complete middleware and routing system; for this reason, it is often referred to as a “mini-app”.
  */
-const router = express.Router();/**
- * PROFILE IMAGE STORING STARTS
- */
+// const router = express.Router();/**
+//  * PROFILE IMAGE STORING STARTS
+//  */
+
+router.use(bodyParser.json());
+router.use(bodyParser.urlencoded({ extended: true }));
+
 const s3 = new aws.S3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -65,7 +89,7 @@ function checkFileType(file, cb) {
  */
 
 router.post('/profile-img-upload', (req, res) => {
-    console.log( 'made it to server!', req.file);
+    console.log( 'made it to server!');
     
     profileImgUpload(req, res, (error) => {
         console.log( 'requestOkokok', req.file );
@@ -83,28 +107,34 @@ router.post('/profile-img-upload', (req, res) => {
                 const imageName = req.file.key;
                 const imageLocation = req.file.location;// Save the file name into database into profile modelres.json
 
-
+                const imageObject = {
+                    name: imageName,
+                    location: imageLocation
+                }
+                res.send(imageObject);
         }
     }
-    res.send(req.file);
+    
  });
 });
 
 router.post('/image', (req, res) => {
-    console.log('server-side POST response', req.file);
-
-    let image = req.file
+    console.log('server-side POST response', req.body);
+    const image = req.body;
+    const sqlText = `INSERT INTO "images" ("name", "location") VALUES ($1, $2)`;
     
-    pool.query(`INSERT INTO "images" ("name", "location") VALUES (${image.name}, ${image.location});`)
+    pool.query(sqlText, [image.name, image.location])
         .then((result) => {
+            console.log('made it to DB', image);
             res.sendStatus(200);
-            console.log('made it to DB');
+
         })
         .catch((error) => {
             console.log(`Error on POST query: ${error}`);
             res.sendStatus(500);
         })
-})
+
+});
 
 
 

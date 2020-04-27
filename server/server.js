@@ -2,13 +2,14 @@ const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const AWS = require('aws-sdk');
-const fs = require('fs');
-const fileType = require('file-type');
+// const fs = require('fs');
+// const fileType = require('file-type');
 const bluebird = require('bluebird');
-const multiparty = require('multiparty');
-const profile = require('./routes/api/profile'); 
+// const multiparty = require('multiparty');
 
-app.use('/api/profile', profile);
+
+const profile = require('./routes/profile'); 
+app.use('/profile', profile);
 
 
 // App Set //
@@ -30,46 +31,46 @@ AWS.config.update({
 AWS.config.setPromisesDependency(bluebird);
 
 // create S3 instance
-const s3 = new AWS.S3();
+// const s3 = new AWS.S3();
 
 // abstracts function to upload a file returning a promise
-const uploadFile = (buffer, name, type) => {
-  const params = {
-    ACL: 'public-read',
-    Body: buffer,
-    Bucket: process.env.S3_BUCKET,
-    ContentType: type.mime,
-    Key: `${name}.${type.ext}`
-  };
-  return s3.upload(params).promise();
-};
+// const uploadFile = (buffer, name, type) => {
+//   const params = {
+//     ACL: 'public-read',
+//     Body: buffer,
+//     Bucket: process.env.S3_BUCKET,
+//     ContentType: type.mime,
+//     Key: `${name}.${type.ext}`
+//   };
+//   return s3.upload(params).promise();
+// };
 
 
 // Define POST route
-app.post('/test-upload', (request, response) => {
+// app.post('/test-upload', (request, response) => {
   
 
-  console.log( 'made it to server');
+//   console.log( 'made it to server');
 
-  const form = new multiparty.Form();
-  form.parse(request, async (error, fields, files) => {
-    if (error) throw new Error(error);
+//   const form = new multiparty.Form();
+//   form.parse(request, async (error, fields, files) => {
+//     if (error) throw new Error(error);
     
-    try {
-      const path = files.file[0].path;
-      const buffer = fs.readFileSync(path);
-      const type = fileType(buffer);
-      const timestamp = Date.now().toString();
-      const fileName = `bucketFolder/${timestamp}-lg`;
-      const data = await uploadFile(buffer, fileName, type);
-      return response.status(200).send(data);
+//     try {
+//       const path = files.file[0].path;
+//       const buffer = fs.readFileSync(path);
+//       const type = fileType(buffer);
+//       const timestamp = Date.now().toString();
+//       const fileName = `bucketFolder/${timestamp}-lg`;
+//       const data = await uploadFile(buffer, fileName, type);
+//       return response.status(200).send(data);
 
-    } catch (error) {
-      return response.status(400).send(error);
-    }
+//     } catch (error) {
+//       return response.status(400).send(error);
+//     }
 
-  });
-});
+//   });
+// });
 
 // Body parser middleware
 app.use(bodyParser.json());
@@ -77,6 +78,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Serve static files
 app.use(express.static('build'));
+
 
 const PORT = process.env.PORT || 5000;
 
