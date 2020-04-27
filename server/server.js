@@ -1,16 +1,94 @@
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
-const port = process.env.PORT || 5000;
+const AWS = require('aws-sdk');
+const fs = require('fs');
+const fileType = require('file-type');
+const bluebird = require('bluebird');
+const multiparty = require('multiparty');
+const profile = require('./routes/api/profile'); 
 
-/** ---------- MIDDLEWARE ---------- **/
-app.use(bodyParser.json()); // needed for angular requests
+app.use('/api/profile', profile);
+
+
+// App Set //
+const dotenv = require('dotenv');
+
+//.ENV config from lecture last week
+dotenv.config();
+console.log('API Key:', process.env.AWS_ACCESS_KEY_ID);
+console.log('API Key:', process.env.AWS_SECRET_ACCESS_KEY);
+
+
+// configure the keys for accessing AWS
+AWS.config.update({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+});
+
+// configure AWS to work with promises
+AWS.config.setPromisesDependency(bluebird);
+
+// create S3 instance
+const s3 = new AWS.S3();
+
+// abstracts function to upload a file returning a promise
+const uploadFile = (buffer, name, type) => {
+  const params = {
+    ACL: 'public-read',
+    Body: buffer,
+    Bucket: process.env.S3_BUCKET,
+    ContentType: type.mime,
+    Key: `${name}.${type.ext}`
+  };
+  return s3.upload(params).promise();
+};
+
+
+// Define POST route
+app.post('/test-upload', (request, response) => {
+  
+
+  console.log( 'made it to server');
+
+  const form = new multiparty.Form();
+  form.parse(request, async (error, fields, files) => {
+    if (error) throw new Error(error);
+    
+    try {
+      const path = files.file[0].path;
+      const buffer = fs.readFileSync(path);
+      const type = fileType(buffer);
+      const timestamp = Date.now().toString();
+      const fileName = `bucketFolder/${timestamp}-lg`;
+      const data = await uploadFile(buffer, fileName, type);
+      return response.status(200).send(data);
+
+    } catch (error) {
+      return response.status(400).send(error);
+    }
+
+  });
+});
+
+// Body parser middleware
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Serve static files
 app.use(express.static('build'));
 
-/** ---------- ROUTES ---------- **/
+const PORT = process.env.PORT || 5000;
 
 
-/** ---------- START SERVER ---------- **/
-app.listen(port, function () {
-    console.log('Listening on port: ', port);
+/** Listen * */
+app.listen(PORT, () => {
+  console.log(`Listening on port: ${PORT}`);
 });
+
+
+
+
+
+
+
